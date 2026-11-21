@@ -1,0 +1,49 @@
+<!doctype html><html lang="vi"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#101827"><title>Lâm Gold Signal</title>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#101827;color:#f4f7fb;font:15px system-ui,sans-serif}main{max-width:720px;margin:auto;padding:14px}.panel{background:#182438;border:1px solid #2b3a52;border-radius:14px;padding:14px;margin:12px 0}h1{font-size:21px;margin:0}.muted{color:#a9b6c9;font-size:12px}.price{font-size:31px;font-weight:800;color:#f4c95d;margin:6px 0}.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}button{background:#263750;color:white;border:1px solid #40536f;border-radius:9px;padding:10px 14px}button.active{background:#536d91}.signal{font-size:23px;font-weight:800;margin:12px 0 4px}.buy{color:#21c77a}.sell{color:#ff626d}.wait{color:#f4c95d}.grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}.metric{background:#111d2e;padding:10px;border-radius:9px}.metric b{display:block;margin-top:4px}canvas{width:100%;height:230px;background:#111d2e;border-radius:9px;margin-top:10px}.warn{font-size:12px;line-height:1.6;color:#d6deea;border-left:3px solid #f4c95d;padding-left:10px}ul{font-size:13px;line-height:1.6;padding-left:20px}.foot{font-size:11px;color:#a9b6c9;line-height:1.5}
+</style>
+<link rel="manifest" href="./manifest.webmanifest">
+<meta name="theme-color" content="#101827">
+<link rel="apple-touch-icon" href="./icons/icon-192.png">
+</head><body><main>
+<div class="row" style="justify-content:space-between"><div><h1>🟡 LÂM GOLD SIGNAL</h1><div class="muted">XAU/USD · tự cập nhật · tín hiệu tham khảo</div></div><span class="muted" id="status">Đang kết nối…</span></div>
+<section class="panel"><div class="muted">Giá vàng giao ngay tham khảo (USD/oz)</div><div class="price" id="price">--</div><div class="muted" id="updated">Chưa có dữ liệu</div></section>
+<section class="panel"><div class="row"><b>Khung phân tích</b><button id="m15" class="active" onclick="setFrame('M15')">M15</button><button id="h1" onclick="setFrame('H1')">H1</button><button onclick="refreshData()">Cập nhật</button></div>
+<div class="signal wait" id="signal">ĐANG CHỜ DỮ LIỆU</div><div class="muted" id="reason">Đang tải dữ liệu giá.</div><canvas id="chart" width="700" height="230"></canvas>
+<div class="grid"><div class="metric"><span class="muted">EMA 5 / 10</span><b id="emaShort">--</b></div><div class="metric"><span class="muted">EMA 20 / 50</span><b id="emaLong">--</b></div><div class="metric"><span class="muted">MACD DIF / DEA</span><b id="macd">--</b></div><div class="metric"><span class="muted">RSI 14</span><b id="rsi">--</b></div></div></section>
+<section class="panel"><b>Cách đọc</b><ul><li><span class="buy">BUY xanh:</span> EMA tăng, MACD xác nhận, RSI phù hợp.</li><li><span class="sell">SELL đỏ:</span> EMA giảm, MACD xác nhận, RSI phù hợp.</li><li><span class="wait">CHỜ:</span> chỉ báo chưa đồng thuận hoặc thiếu dữ liệu.</li></ul></section>
+<section class="panel warn"><b>Lưu ý:</b> Nguồn XAUS là giá vàng giao ngay tham khảo, không phải giá Bid/Ask thực thi của Vantage. Dữ liệu nội ngày được lấy mẫu 5 phút rồi tổng hợp thành M15/H1 nên có thể khác biểu đồ MT5. Công cụ chỉ báo tín hiệu, không tự đặt lệnh và không bảo đảm lợi nhuận. Hãy thử trên Demo; luôn tự kiểm tra và đặt Stop Loss.</section>
+<div class="foot">Nguồn: XAUS public API, không cần tài khoản hoặc API key. Làm mới khoảng 60 giây. Nếu dữ liệu cũ hoặc lỗi, công cụ sẽ báo trạng thái và không đưa tín hiệu mới.</div>
+</main>
+<script>
+const API='https://xaus.com/api/v1';let frame='M15',raw=[],busy=false;const $=x=>document.getElementById(x);
+function fmt(x){return Number.isFinite(x)?x.toFixed(2):'--'}
+function setFrame(f){frame=f;$('m15').classList.toggle('active',f==='M15');$('h1').classList.toggle('active',f==='H1');render()}
+async function refreshData(){if(busy)return;busy=true;$('status').textContent='Đang cập nhật…';try{
+ const [a,b]=await Promise.all([fetch(API+'/spot?compact=1',{cache:'no-store'}),fetch(API+'/intraday?symbol=xau&hours=48',{cache:'no-store'})]);
+ if(!a.ok||!b.ok)throw Error('Nguồn dữ liệu không phản hồi');const s=await a.json(),d=await b.json();if(!Number.isFinite(+s.spot_usd_oz))throw Error('Giá không hợp lệ');
+ raw=(d.points||[]).map(v=>({t:+v.t,p:+v.p})).filter(v=>Number.isFinite(v.t)&&Number.isFinite(v.p)).sort((x,y)=>x.t-y.t);if(raw.length<20)throw Error('Chưa đủ dữ liệu');
+ $('price').textContent=(+s.spot_usd_oz).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});let stamp=s.price_as_of||s.updated_at;$('updated').textContent='Nguồn cập nhật: '+new Date(stamp).toLocaleString('vi-VN')+' · '+(s.data_state?.status||'');$('status').textContent='Đã cập nhật · 60 giây/lần';render();
+ }catch(e){$('status').textContent='Lỗi: '+e.message;$('signal').textContent='CHƯA CÓ TÍN HIỆU';$('signal').className='signal wait';$('reason').textContent='Kiểm tra mạng rồi bấm Cập nhật.'}finally{busy=false}}
+function bars(){let sec=frame==='M15'?900:3600,m=new Map();for(let q of raw){let k=Math.floor(q.t/sec)*sec;if(!m.has(k))m.set(k,[]);m.get(k).push(q.p)}return [...m].sort((a,b)=>a[0]-b[0]).map(([t,p])=>({t,c:p[p.length-1],h:Math.max(...p),l:Math.min(...p)}))}
+function ema(v,n){let o=[],k=2/(n+1),z=v[0];v.forEach((x,i)=>{z=i?x*k+z*(1-k):x;o.push(z)});return o}
+function rsi(v,n=14){if(v.length<=n)return NaN;let g=0,l=0;for(let i=1;i<=n;i++){let d=v[i]-v[i-1];g+=Math.max(d,0);l+=Math.max(-d,0)}g/=n;l/=n;for(let i=n+1;i<v.length;i++){let d=v[i]-v[i-1];g=(g*(n-1)+Math.max(d,0))/n;l=(l*(n-1)+Math.max(-d,0))/n}return l===0?100:100-100/(1+g/l)}
+function macd(v){let a=ema(v,12),b=ema(v,26),d=v.map((_,i)=>a[i]-b[i]),e=ema(d,9);return [d.at(-1),e.at(-1)]}
+function render(){if(!raw.length)return;let bs=bars(),v=bs.map(x=>x.c);draw(bs);let need=frame==='H1'?40:60;if(v.length<need){$('signal').textContent='CHỜ ĐỦ DỮ LIỆU';$('signal').className='signal wait';$('reason').textContent=`Có ${v.length} nến ${frame}; cần tối thiểu ${need} nến. H1 có ít dữ liệu hơn nên EMA50 chỉ mang tính tham khảo.`;return}
+ let e5=ema(v,5).at(-1),e10=ema(v,10).at(-1),e20=ema(v,20).at(-1),e50=ema(v,50).at(-1),[md,me]=macd(v),r=rsi(v);
+ $('emaShort').textContent=fmt(e5)+' / '+fmt(e10);$('emaLong').textContent=fmt(e20)+' / '+fmt(e50);$('macd').textContent=fmt(md)+' / '+fmt(me);$('rsi').textContent=fmt(r);
+ let buy=e5>e10&&e10>e20&&e20>e50&&md>me&&r>45&&r<70,sell=e5<e10&&e10<e20&&e20<e50&&md<me&&r<55&&r>30;
+ if(buy){$('signal').textContent='▲ BUY';$('signal').className='signal buy';$('reason').textContent='EMA tăng đồng thuận, MACD xác nhận, RSI chưa quá mua.'}
+ else if(sell){$('signal').textContent='▼ SELL';$('signal').className='signal sell';$('reason').textContent='EMA giảm đồng thuận, MACD xác nhận, RSI chưa quá bán.'}
+ else{$('signal').textContent='● CHỜ';$('signal').className='signal wait';$('reason').textContent='Các chỉ báo chưa đồng thuận. Không nên cố vào lệnh.'}}
+function draw(bs){let c=$('chart'),x=c.getContext('2d'),w=c.width,h=c.height;x.clearRect(0,0,w,h);x.fillStyle='#111d2e';x.fillRect(0,0,w,h);let a=bs.slice(-80);if(!a.length)return;let lo=Math.min(...a.map(z=>z.l)),hi=Math.max(...a.map(z=>z.h)),pad=(hi-lo)*.12||1;lo-=pad;hi+=pad;x.strokeStyle='#2b3a52';for(let j=1;j<4;j++){x.beginPath();x.moveTo(0,h*j/4);x.lineTo(w,h*j/4);x.stroke()}x.strokeStyle='#f4c95d';x.lineWidth=2;x.beginPath();a.forEach((z,i)=>{let xx=10+i*(w-20)/(a.length-1||1),yy=h-12-(z.c-lo)/(hi-lo)*(h-24);i?x.lineTo(xx,yy):x.moveTo(xx,yy)});x.stroke();x.fillStyle='#a9b6c9';x.font='12px sans-serif';x.fillText('Cao '+hi.toFixed(2),10,15);x.fillText('Thấp '+lo.toFixed(2),10,h-5)}
+refreshData();setInterval(refreshData,60000);
+</script>
+<script>
+if ("serviceWorker" in navigator) {
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.register("./sw.js").catch(err => console.log("SW:", err));
+  });
+}
+</script>
+</body></html>
