@@ -37,7 +37,7 @@ function render(){if(!raw.length)return;let bs=bars(),v=bs.map(x=>x.c);draw(bs);
  else if(sell){$('signal').textContent='▼ SELL';$('signal').className='signal sell';$('reason').textContent='EMA giảm đồng thuận, MACD xác nhận, RSI chưa quá bán.'}
  else{$('signal').textContent='● CHỜ';$('signal').className='signal wait';$('reason').textContent='Các chỉ báo chưa đồng thuận. Không nên cố vào lệnh.'}}
 function draw(bs){let c=$('chart'),x=c.getContext('2d'),w=c.width,h=c.height;x.clearRect(0,0,w,h);x.fillStyle='#111d2e';x.fillRect(0,0,w,h);let a=bs.slice(-80);if(!a.length)return;let lo=Math.min(...a.map(z=>z.l)),hi=Math.max(...a.map(z=>z.h)),pad=(hi-lo)*.12||1;lo-=pad;hi+=pad;x.strokeStyle='#2b3a52';for(let j=1;j<4;j++){x.beginPath();x.moveTo(0,h*j/4);x.lineTo(w,h*j/4);x.stroke()}x.strokeStyle='#f4c95d';x.lineWidth=2;x.beginPath();a.forEach((z,i)=>{let xx=10+i*(w-20)/(a.length-1||1),yy=h-12-(z.c-lo)/(hi-lo)*(h-24);i?x.lineTo(xx,yy):x.moveTo(xx,yy)});x.stroke();x.fillStyle='#a9b6c9';x.font='12px sans-serif';x.fillText('Cao '+hi.toFixed(2),10,15);x.fillText('Thấp '+lo.toFixed(2),10,h-5)}
-refreshData();setInterval(refreshData,60000);
+refreshData();setInterval(refreshData,15000);
 </script>
 <script>
 if ("serviceWorker" in navigator) {
